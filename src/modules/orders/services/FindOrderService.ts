@@ -22,6 +22,16 @@ class FindOrderService {
   public async execute({ id }: IRequest): Promise<Order | undefined> {
     const order = await this.ordersRepository.findById(id);
 
+    if (order) {
+      const customer = await this.customersRepository.findById(
+        order.customer_id,
+      );
+
+      if (customer) {
+        order.customer = customer;
+      }
+    }
+
     return order;
   }
 }

@@ -6,7 +6,6 @@ import IProductsRepository from '@modules/products/repositories/IProductsReposit
 import ICustomersRepository from '@modules/customers/repositories/ICustomersRepository';
 import Order from '../infra/typeorm/entities/Order';
 import IOrdersRepository from '../repositories/IOrdersRepository';
-import OrdersRepository from '../infra/typeorm/repositories/OrdersRepository';
 
 interface IProduct {
   id: string;
@@ -37,12 +36,34 @@ class CreateOrderService {
 
     const findProducts = await this.productsRepository.findAllById(products);
 
-    // const order = await this.ordersRepository.create({
-    //   customer,
-    //   findProducts,
-    // });
+    if (findProducts.length !== products.length) {
+      throw new AppError('Algum(ns) produto(s) não encontrado(s).', 400);
+    }
 
-    // TODO
+    const updatedProducts = await this.productsRepository.updateQuantity(
+      products,
+    );
+
+    updatedProducts.forEach(product => {
+      if (product.quantity < 0) {
+        throw new AppError('Quantidade de produto insuficiente.');
+      }
+    });
+
+    const orderProducts = findProducts.map(product => {
+      const productQuantity = products.find(prod => prod.id === product.id);
+
+      return {
+        product_id: product.id,
+        price: product.price,
+        quantity: productQuantity ? productQuantity.quantity : 0,
+      };
+    });
+
+    const order = await this.ordersRepository.create({
+      customer,
+      products: orderProducts,
+    });
 
     return order;
   }
